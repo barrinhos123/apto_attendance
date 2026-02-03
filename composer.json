@@ -1,0 +1,22 @@
+{
+  "name": "apto/attendance",
+  "description": "Attendance tracking module for the Aptoment chassis.",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Apto\\Attendance\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Apto\\Attendance\\Providers\\AttendanceServiceProvider"
+      ]
+    }
+  },
+  "require": {
+    "php": "^8.2",
+    "illuminate/support": "^12.0"
+  }
+}
