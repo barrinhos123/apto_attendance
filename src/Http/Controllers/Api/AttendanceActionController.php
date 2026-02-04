@@ -19,15 +19,20 @@ class AttendanceActionController extends Controller
 
     public function clockIn(Request $request): JsonResponse
     {
+        $scheduleId = $request->filled('schedule_id') ? $request->integer('schedule_id') : null;
+        $latitude = $request->filled('latitude') ? (float) $request->input('latitude') : null;
+        $longitude = $request->filled('longitude') ? (float) $request->input('longitude') : null;
+
         $record = $this->recorder->clockIn(
             $request->user(),
-            $request->integer('shift_id'),
+            $scheduleId,
             $request->string('notes')->toString() ?: null,
-            $request->string('location')->toString() ?: null
+            $latitude,
+            $longitude
         );
 
         return response()->json([
-            'data' => $record->fresh(['user', 'shift']),
+            'data' => $record->fresh(['user', 'shift', 'schedule']),
         ]);
     }
 
@@ -36,8 +41,7 @@ class AttendanceActionController extends Controller
         try {
             $record = $this->recorder->clockOut(
                 $request->user(),
-                $request->string('notes')->toString() ?: null,
-                $request->string('location')->toString() ?: null
+                $request->string('notes')->toString() ?: null
             );
         } catch (ModelNotFoundException) {
             return response()->json([
@@ -46,7 +50,7 @@ class AttendanceActionController extends Controller
         }
 
         return response()->json([
-            'data' => $record->fresh(['user', 'shift']),
+            'data' => $record->fresh(['user', 'shift', 'schedule']),
         ]);
     }
 
@@ -55,8 +59,7 @@ class AttendanceActionController extends Controller
         try {
             $record = $this->recorder->startBreak(
                 $request->user(),
-                $request->string('notes')->toString() ?: null,
-                $request->string('location')->toString() ?: null
+                $request->string('notes')->toString() ?: null
             );
         } catch (ModelNotFoundException) {
             return response()->json([
@@ -74,8 +77,7 @@ class AttendanceActionController extends Controller
         try {
             $record = $this->recorder->endBreak(
                 $request->user(),
-                $request->string('notes')->toString() ?: null,
-                $request->string('location')->toString() ?: null
+                $request->string('notes')->toString() ?: null
             );
         } catch (ModelNotFoundException) {
             return response()->json([

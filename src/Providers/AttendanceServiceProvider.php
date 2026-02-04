@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Apto\Attendance\Providers;
 
+use App\Support\Navigation;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
@@ -18,6 +19,7 @@ class AttendanceServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->registerNavigation();
         $this->loadRoutes();
         $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
         $this->loadViewsFrom(__DIR__ . '/../../resources/views', 'attendance');
@@ -53,5 +55,16 @@ class AttendanceServiceProvider extends ServiceProvider
         if (class_exists(Livewire::class)) {
             Livewire::component('attendance.dashboard', AttendanceDashboard::class);
         }
+    }
+
+    protected function registerNavigation(): void
+    {
+        if (! class_exists(Navigation::class)) {
+            return;
+        }
+
+        $nav = $this->app->make(Navigation::class)->getSubject(__('Human Resources'));
+        $nav->add(__('Attendance'), 'attendance.dashboard', 'attendance.dashboard', 'list');
+        $nav->add(__('Schedules'), 'attendance.schedules.index', 'attendance.schedules.*', 'calendar');
     }
 }

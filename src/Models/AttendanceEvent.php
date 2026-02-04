@@ -22,10 +22,15 @@ class AttendanceEvent extends Model
         'occurred_at',
         'notes',
         'location',
+        'gps_coordinates',
+        'latitude',
+        'longitude',
     ];
 
     protected $casts = [
         'occurred_at' => 'datetime',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     public function attendance(): BelongsTo
