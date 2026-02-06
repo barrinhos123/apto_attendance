@@ -25,6 +25,10 @@ class AttendanceDashboard extends Component
     public function mount(): void
     {
         $this->userId = auth()->id();
+        $record = $this->activeRecord;
+        if ($record && ($this->notes === null || $this->notes === '')) {
+            $this->notes = $record->notes ?? '';
+        }
     }
 
     public function clockIn(?float $latitude = null, ?float $longitude = null, bool $locationPermissionDenied = false, AttendanceRecorder $recorder): void
@@ -32,7 +36,7 @@ class AttendanceDashboard extends Component
         $this->resetValidationState();
 
         try {
-            $recorder->clockIn(auth()->user(), $this->scheduleId, $this->notes, $latitude, $longitude, $locationPermissionDenied);
+            $recorder->clockIn(auth()->user(), $this->scheduleId, $this->sanitizeNotes($this->notes), $latitude, $longitude, $locationPermissionDenied);
             $this->resetInputFields();
         } catch (Throwable $e) {
             $this->errorsBag[] = $e->getMessage();
@@ -44,7 +48,7 @@ class AttendanceDashboard extends Component
         $this->resetValidationState();
 
         try {
-            $recorder->clockOut(auth()->user(), $this->notes);
+            $recorder->clockOut(auth()->user(), $this->sanitizeNotes($this->notes));
             $this->resetInputFields();
         } catch (ModelNotFoundException $e) {
             $this->errorsBag[] = __('No active attendance record found to clock-out.');
@@ -59,7 +63,7 @@ class AttendanceDashboard extends Component
 
         try {
             $record = AttendanceRecord::findOrFail($recordId);
-            $recorder->clockOutRecord($record, auth()->user(), $this->notes);
+            $recorder->clockOutRecord($record, auth()->user(), $this->sanitizeNotes($this->notes));
         } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
             $this->errorsBag[] = $e->getMessage();
         } catch (Throwable $e) {
@@ -72,7 +76,7 @@ class AttendanceDashboard extends Component
         $this->resetValidationState();
 
         try {
-            $recorder->startBreak(auth()->user(), $this->notes);
+            $recorder->startBreak(auth()->user(), $this->sanitizeNotes($this->notes));
         } catch (ModelNotFoundException $e) {
             $this->errorsBag[] = __('No active attendance record found to start a break.');
         } catch (Throwable $e) {
@@ -85,12 +89,32 @@ class AttendanceDashboard extends Component
         $this->resetValidationState();
 
         try {
-            $recorder->endBreak(auth()->user(), $this->notes);
+            $recorder->endBreak(auth()->user(), $this->sanitizeNotes($this->notes));
         } catch (ModelNotFoundException $e) {
             $this->errorsBag[] = __('No active attendance record found to end a break.');
         } catch (Throwable $e) {
             $this->errorsBag[] = $e->getMessage();
         }
+    }
+
+    public function saveNotes(): void
+    {
+        $this->resetValidationState();
+
+        $record = $this->activeRecord;
+        if (! $record) {
+            $this->errorsBag[] = __('No active attendance record to save notes to.');
+
+            return;
+        }
+
+        if ($record->user_id !== auth()->id()) {
+            $this->errorsBag[] = __('You can only save notes to your own records.');
+
+            return;
+        }
+
+        $record->update(['notes' => $this->sanitizeNotes($this->notes)]);
     }
 
     public function getActiveRecordProperty(): ?AttendanceRecord
@@ -110,8 +134,22 @@ class AttendanceDashboard extends Component
 
     protected function resetInputFields(): void
     {
-        $this->notes = null;
         $this->scheduleId = null;
+        // Keep notes when we have an active record (so user can continue editing)
+        if (! $this->activeRecord) {
+            $this->notes = null;
+        } else {
+            $this->notes = $this->activeRecord->notes ?? '';
+        }
+    }
+
+    protected function sanitizeNotes(?string $notes): ?string
+    {
+        if ($notes === null || $notes === '') {
+            return null;
+        }
+
+        return strip_tags($notes, '<p><br><strong><em><b><i><ul><ol><li>');
     }
 
     public function canClockOutRecord(AttendanceRecord $record): bool

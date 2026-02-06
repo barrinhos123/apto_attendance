@@ -37,7 +37,7 @@ class ExportController extends Controller
                 'clock_in' => optional($record->clock_in_at)?->format('H:i'),
                 'clock_out' => optional($record->clock_out_at)?->format('H:i'),
                 'status' => $record->status,
-                'notes' => $record->notes,
+                'notes' => $record->notes ? strip_tags($record->notes) : null,
                 'worked_hours' => $record->clock_in_at && $record->clock_out_at
                     ? $record->clock_in_at->diffInMinutes($record->clock_out_at) / 60
                     : null,

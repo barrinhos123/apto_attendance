@@ -15,6 +15,8 @@ class Schedule extends Model
     protected $fillable = [
         'business_id',
         'name',
+        'clock_in_time',
+        'clock_out_time',
         'duration_minutes',
         'days_of_week',
         'location_type',
@@ -30,15 +32,69 @@ class Schedule extends Model
         'longitude' => 'float',
     ];
 
+    /**
+     * Compute duration in minutes from clock-in and clock-out times.
+     * Handles overnight shifts: e.g. 22:00 to 06:00 = 8 hours.
+     */
+    public static function computeDurationMinutes(string $clockIn, string $clockOut): int
+    {
+        $in = self::timeToMinutes($clockIn);
+        $out = self::timeToMinutes($clockOut);
+
+        if ($out === $in) {
+            return 24 * 60; // Same time = 24h shift
+        }
+
+        if ($out > $in) {
+            return $out - $in;
+        }
+
+        // Overnight: e.g. 22:00 (1320) to 06:00 (360) = (1440 - 1320) + 360 = 480
+        return (24 * 60 - $in) + $out;
+    }
+
+    protected static function timeToMinutes(string $time): int
+    {
+        $parts = explode(':', $time);
+
+        return ((int) ($parts[0] ?? 0)) * 60 + ((int) ($parts[1] ?? 0));
+    }
+
+    /**
+     * Format clock time for display (HH:mm).
+     */
+    public function getClockInFormattedAttribute(): string
+    {
+        $time = $this->clock_in_time;
+        if ($time instanceof \DateTimeInterface) {
+            return $time->format('H:i');
+        }
+        return substr((string) $time, 0, 5);
+    }
+
+    public function getClockOutFormattedAttribute(): string
+    {
+        $time = $this->clock_out_time;
+        if ($time instanceof \DateTimeInterface) {
+            return $time->format('H:i');
+        }
+        return substr((string) $time, 0, 5);
+    }
+
     public const LOCATION_INSIDE = 'inside';
     public const LOCATION_OUTSIDE = 'outside';
 
     public static function locationTypes(): array
     {
         return [
-            self::LOCATION_INSIDE  => __('Inside'),
-            self::LOCATION_OUTSIDE => __('Outside'),
+            self::LOCATION_INSIDE  => __('No location'),
+            self::LOCATION_OUTSIDE => __('Specific location'),
         ];
+    }
+
+    public function getLocationTypeLabelAttribute(): string
+    {
+        return self::locationTypes()[$this->location_type] ?? $this->location_type;
     }
 
     public static function weekdays(): array

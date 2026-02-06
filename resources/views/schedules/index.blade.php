@@ -34,7 +34,7 @@
                                     @if (!auth()->user()->business_id)
                                         <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{{ __('Business') }}</th>
                                     @endif
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{{ __('Duration') }}</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{{ __('Clock in') }} / {{ __('Clock out') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{{ __('Days') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{{ __('Location') }}</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">{{ __('Place') }}</th>
@@ -52,8 +52,8 @@
                                     <td class="px-4 py-2">
                                         <select form="filter-form-schedules" name="location_type" class="block w-full rounded-md border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 text-sm">
                                             <option value="">{{ __('All') }}</option>
-                                            <option value="inside" {{ request('location_type') === 'inside' ? 'selected' : '' }}>{{ __('Inside') }}</option>
-                                            <option value="outside" {{ request('location_type') === 'outside' ? 'selected' : '' }}>{{ __('Outside') }}</option>
+                                            <option value="inside" {{ request('location_type') === 'inside' ? 'selected' : '' }}>{{ __('No location') }}</option>
+                                            <option value="outside" {{ request('location_type') === 'outside' ? 'selected' : '' }}>{{ __('Specific location') }}</option>
                                         </select>
                                     </td>
                                     <td class="px-4 py-2"></td>
@@ -71,11 +71,14 @@
                                             <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ $schedule->business?->name ?? '—' }}</td>
                                         @endif
                                         <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
-                                            @if ($schedule->duration_minutes >= 60)
-                                                {{ (int) floor($schedule->duration_minutes / 60) }}h @if ($schedule->duration_minutes % 60){{ $schedule->duration_minutes % 60 }}min @endif
-                                            @else
-                                                {{ $schedule->duration_minutes }} {{ __('min') }}
-                                            @endif
+                                            {{ $schedule->clock_in_formatted }} – {{ $schedule->clock_out_formatted }}
+                                            <span class="block text-xs text-slate-500 dark:text-slate-500">
+                                                @if ($schedule->duration_minutes >= 60)
+                                                    {{ (int) floor($schedule->duration_minutes / 60) }}h @if ($schedule->duration_minutes % 60){{ $schedule->duration_minutes % 60 }}min @endif
+                                                @else
+                                                    {{ $schedule->duration_minutes }} {{ __('min') }}
+                                                @endif
+                                            </span>
                                         </td>
                                         <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                                             @php
@@ -85,7 +88,7 @@
                                             {{ implode(', ', $labels) }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
-                                            {{ $schedule->location_type === 'inside' ? __('Inside') : __('Outside') }}
+                                            {{ $schedule->location_type_label }}
                                         </td>
                                         <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400 max-w-[200px] truncate" title="{{ $schedule->location ?? '' }}">
                                             {{ $schedule->location ?? '—' }}

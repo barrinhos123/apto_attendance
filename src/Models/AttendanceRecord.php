@@ -92,6 +92,20 @@ class AttendanceRecord extends Model
         return (int) max(0, $seconds);
     }
 
+    /** First line of notes for compact display (strips HTML, one line only). */
+    public function getNotesFirstLineAttribute(): ?string
+    {
+        if (! $this->notes) {
+            return null;
+        }
+
+        $text = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>', '</li>'], "\n", $this->notes));
+        $lines = preg_split('/\r\n|\r|\n/', $text, 2);
+        $first = trim($lines[0] ?? '');
+
+        return $first === '' ? null : $first;
+    }
+
     /** Human-readable duration, e.g. "2h 30m". */
     public function formatDuration(int $seconds): string
     {

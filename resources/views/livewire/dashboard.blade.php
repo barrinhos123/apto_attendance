@@ -89,10 +89,58 @@
                     </label>
                 </div>
 
-                <label class="block">
+                <div class="block"
+                     x-data="{
+                         init() {
+                             this.$nextTick(() => {
+                                 const content = $wire.get('notes') || '';
+                                 if (content) this.$refs.editor.innerHTML = content;
+                                 this.$refs.editor.addEventListener('paste', (e) => {
+                                     e.preventDefault();
+                                     document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+                                 });
+                             });
+                         },
+                         format(cmd) {
+                             this.$refs.editor.focus();
+                             document.execCommand(cmd, false, null);
+                             this.$wire.set('notes', this.$refs.editor.innerHTML);
+                         },
+                         sync() {
+                             this.$wire.set('notes', this.$refs.editor.innerHTML);
+                         }
+                     }">
                     <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ __('Notes (optional)') }}</span>
-                    <textarea wire:model.defer="notes" rows="2" class="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="{{ __('Add context or remarks...') }}"></textarea>
-                </label>
+                    <div class="mt-1 rounded-md border border-slate-300 dark:border-slate-600 dark:bg-slate-700 overflow-hidden focus-within:ring-2 focus-within:ring-slate-900 focus-within:border-slate-900" wire:ignore>
+                        <div class="flex items-center gap-0.5 px-2 py-1 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800">
+                            <button type="button" @click="format('bold')" title="{{ __('Bold') }}" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600">
+                                <svg class="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/></svg>
+                            </button>
+                            <button type="button" @click="format('italic')" title="{{ __('Italic') }}" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600">
+                                <svg class="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4z"/></svg>
+                            </button>
+                            <button type="button" @click="format('insertUnorderedList')" title="{{ __('Bullet list') }}" class="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600">
+                                <svg class="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/></svg>
+                            </button>
+                        </div>
+                        <div x-ref="editor"
+                             contenteditable="true"
+                             class="min-h-[4.5rem] px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_li]:my-0.5 empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
+                             data-placeholder="{{ __('Add context or remarks...') }}"
+                             @input.debounce.300ms="sync()"
+                             @focusout="sync()"
+                             role="textbox"></div>
+                    </div>
+                    <input type="hidden" wire:model="notes" />
+                    @if ($activeRecord)
+                        <div class="mt-2 flex items-center gap-2">
+                            <x-button type="button" @click="sync(); $wire.saveNotes()" class="!text-sm">
+                                {{ __('Save notes') }}
+                            </x-button>
+                            <span class="text-xs text-slate-500 dark:text-slate-400">{{ __('Save notes to your current shift') }}</span>
+                        </div>
+                    @endif
+                </div>
 
                 @if ($errorsBag)
                     <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
@@ -171,8 +219,8 @@
                             <td class="px-6 py-4">{{ $record->formatDuration($record->total_break_seconds) }}</td>
                             <td class="px-6 py-4 capitalize">{{ str_replace('_', ' ', $record->status) }}</td>
                             <td class="px-6 py-4">
-                                @if ($record->notes)
-                                    <span class="truncate block max-w-xs">{{ $record->notes }}</span>
+                                @if ($record->notes_first_line)
+                                    <span class="truncate block max-w-xs" title="{{ $record->notes_first_line }}">{{ $record->notes_first_line }}</span>
                                 @else
                                     <span class="text-slate-400 dark:text-slate-500">—</span>
                                 @endif
@@ -206,7 +254,7 @@
                                     <dl><dt class="text-slate-500 dark:text-slate-400">{{ __('Status') }}</dt><dd class="capitalize">{{ str_replace('_', ' ', $record->status) }}</dd></dl>
                                     <dl><dt class="text-slate-500 dark:text-slate-400">{{ __('Total work time') }}</dt><dd>{{ $record->formatDuration($record->total_work_seconds) }}</dd></dl>
                                     <dl><dt class="text-slate-500 dark:text-slate-400">{{ __('Total break time') }}</dt><dd>{{ $record->formatDuration($record->total_break_seconds) }}</dd></dl>
-                                    <dl class="sm:col-span-2"><dt class="text-slate-500 dark:text-slate-400">{{ __('Notes') }}</dt><dd>{{ $record->notes ?? '—' }}</dd></dl>
+                                    <dl class="sm:col-span-2"><dt class="text-slate-500 dark:text-slate-400">{{ __('Notes') }}</dt><dd class="prose prose-sm dark:prose-invert max-w-none [&_p]:my-0 [&_ul]:my-0 [&_li]:my-0">{!! $record->notes ?: '—' !!}</dd></dl>
                                     @if ($record->latitude && $record->longitude)
                                         <dl><dt class="text-slate-500 dark:text-slate-400">{{ __('Coordinates') }}</dt><dd>{{ $record->latitude }}, {{ $record->longitude }}</dd></dl>
                                     @endif
@@ -220,7 +268,7 @@
                                                     <span class="text-slate-500 dark:text-slate-400 shrink-0">{{ $event->occurred_at->format('H:i:s') }}</span>
                                                     <span class="capitalize">{{ str_replace('_', ' ', $event->type) }}</span>
                                                     @if ($event->notes)
-                                                        <span class="text-slate-600 dark:text-slate-400">– {{ $event->notes }}</span>
+                                                        <span class="text-slate-600 dark:text-slate-400 prose prose-sm dark:prose-invert max-w-none [&_p]:my-0 [&_ul]:my-0 [&_li]:my-0">– {!! $event->notes !!}</span>
                                                     @endif
                                                 </li>
                                             @endforeach

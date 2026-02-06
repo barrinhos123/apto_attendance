@@ -42,8 +42,8 @@ class ScheduleController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'duration_hours' => ['required', 'integer', 'min:0', 'max:24'],
-            'duration_minutes' => ['required', 'integer', 'min:0', 'max:59'],
+            'clock_in_time' => ['required', 'string', 'date_format:H:i'],
+            'clock_out_time' => ['required', 'string', 'date_format:H:i'],
             'days_of_week' => ['required', 'array', 'min:1'],
             'days_of_week.*' => ['string', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
             'location_type' => ['required', 'string', 'in:inside,outside'],
@@ -52,9 +52,9 @@ class ScheduleController extends Controller
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
-        $durationMinutes = (int) $validated['duration_hours'] * 60 + (int) $validated['duration_minutes'];
+        $durationMinutes = Schedule::computeDurationMinutes($validated['clock_in_time'], $validated['clock_out_time']);
         if ($durationMinutes < 1) {
-            return back()->withErrors(['duration_hours' => __('Duration must be at least 1 minute.')]);
+            return back()->withErrors(['clock_in_time' => __('Shift must be at least 1 minute.')]);
         }
 
         $businessId = $request->user()->business_id;
@@ -62,16 +62,23 @@ class ScheduleController extends Controller
             return back()->withErrors(['business' => __('You must be assigned to a business before creating schedules. Contact a super admin.')]);
         }
 
-        Schedule::create([
+        $locationData = $validated['location_type'] === Schedule::LOCATION_OUTSIDE
+            ? [
+                'location' => $validated['location'] ?? null,
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
+            ]
+            : ['location' => null, 'latitude' => null, 'longitude' => null];
+
+        Schedule::create(array_merge([
             'business_id' => $businessId,
             'name' => $validated['name'],
+            'clock_in_time' => $validated['clock_in_time'],
+            'clock_out_time' => $validated['clock_out_time'],
             'duration_minutes' => $durationMinutes,
             'days_of_week' => $validated['days_of_week'],
             'location_type' => $validated['location_type'],
-            'location' => $validated['location'] ?? null,
-            'latitude' => $validated['latitude'] ?? null,
-            'longitude' => $validated['longitude'] ?? null,
-        ]);
+        ], $locationData));
 
         return redirect()->route('attendance.schedules.index')
             ->with('success', __('Schedule created successfully.'));
@@ -90,8 +97,8 @@ class ScheduleController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'duration_hours' => ['required', 'integer', 'min:0', 'max:24'],
-            'duration_minutes' => ['required', 'integer', 'min:0', 'max:59'],
+            'clock_in_time' => ['required', 'string', 'date_format:H:i'],
+            'clock_out_time' => ['required', 'string', 'date_format:H:i'],
             'days_of_week' => ['required', 'array', 'min:1'],
             'days_of_week.*' => ['string', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
             'location_type' => ['required', 'string', 'in:inside,outside'],
@@ -100,20 +107,27 @@ class ScheduleController extends Controller
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
-        $durationMinutes = (int) $validated['duration_hours'] * 60 + (int) $validated['duration_minutes'];
+        $durationMinutes = Schedule::computeDurationMinutes($validated['clock_in_time'], $validated['clock_out_time']);
         if ($durationMinutes < 1) {
-            return back()->withErrors(['duration_hours' => __('Duration must be at least 1 minute.')]);
+            return back()->withErrors(['clock_in_time' => __('Shift must be at least 1 minute.')]);
         }
 
-        $schedule->update([
+        $locationData = $validated['location_type'] === Schedule::LOCATION_OUTSIDE
+            ? [
+                'location' => $validated['location'] ?? null,
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
+            ]
+            : ['location' => null, 'latitude' => null, 'longitude' => null];
+
+        $schedule->update(array_merge([
             'name' => $validated['name'],
+            'clock_in_time' => $validated['clock_in_time'],
+            'clock_out_time' => $validated['clock_out_time'],
             'duration_minutes' => $durationMinutes,
             'days_of_week' => $validated['days_of_week'],
             'location_type' => $validated['location_type'],
-            'location' => $validated['location'] ?? null,
-            'latitude' => $validated['latitude'] ?? null,
-            'longitude' => $validated['longitude'] ?? null,
-        ]);
+        ], $locationData));
 
         return redirect()->route('attendance.schedules.index')
             ->with('success', __('Schedule updated successfully.'));
